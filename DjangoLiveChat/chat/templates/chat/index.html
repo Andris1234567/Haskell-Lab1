@@ -1,0 +1,95 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Django Live Chat</title>
+
+    <link rel="stylesheet"
+          href="{% static 'chat/style.css' %}">
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1 class="animated-title">Django Live Chat</h1>
+
+        <p class="subtitle">
+            Sazinies ar draugiem reāllaikā!
+        </p>
+
+        <form method="POST">
+
+            {% csrf_token %}
+
+            <label>Tavs lietotājvārds</label>
+
+            <input
+                type="text"
+                name="username"
+                placeholder="Ievadi savu vārdu"
+                maxlength="50"
+                required
+            >
+
+            <label>Tērzēšanas istaba</label>
+
+            <input
+                type="text"
+                name="room_name"
+                id="room-name"
+                placeholder="Ievadi istabas nosaukumu"
+                maxlength="100"
+                required
+            >
+
+            <button type="submit">
+                Izveidot / Pievienoties
+            </button>
+
+            {% if error %}
+                <p class="error">{{ error }}</p>
+            {% endif %}
+
+        </form>
+
+        <h2>Pieejamās istabas</h2>
+
+        <div class="rooms-list">
+
+            {% for room in rooms %}
+
+                <button
+                    type="button"
+                    class="room-item"
+                    data-room="{{ room.name }}"
+                >
+                    {{ room.name }}
+                </button>
+
+            {% empty %}
+
+                <p>Vēl nav izveidota neviena istaba.</p>
+
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+    <script>
+        document.querySelectorAll('.room-item')
+            .forEach(button => {
+                button.addEventListener('click', () => {
+                    document.getElementById('room-name').value =
+                        button.dataset.room;
+                });
+            });
+    </script>
+
+</body>
+</html>

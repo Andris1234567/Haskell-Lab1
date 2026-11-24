@@ -1,0 +1,186 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>{{ room.name }}</title>
+
+    <link rel="stylesheet"
+          href="{% static 'chat/style.css' %}">
+
+</head>
+<body>
+
+    <div class="container chat-container">
+
+        <h1 class="animated-title">
+            {{ room.name }}
+        </h1>
+
+        <p>Lietotājs: {{ username }}</p>
+
+        <div id="status" class="status">
+            Savienojas ar serveri...
+        </div>
+
+        <div id="chat-log" class="chat-log">
+
+            {% for message in messages %}
+
+                <div class="message {% if message.username == username %}own{% endif %}"
+                     data-id="{{ message.id }}">
+
+                    <strong>{{ message.username }}</strong>
+
+                    <small>
+                        {{ message.timestamp|date:"H:i" }}
+                    </small>
+
+                    <p>{{ message.content }}</p>
+
+                </div>
+
+            {% endfor %}
+
+        </div>
+
+        <form id="chat-form">
+
+            <input
+                type="text"
+                id="message-input"
+                placeholder="Raksti ziņu..."
+                maxlength="1000"
+                autocomplete="off"
+                required
+            >
+
+            <button id="send-button" type="submit" disabled>
+                Nosūtīt
+            </button>
+
+        </form>
+
+        <a href="{% url 'index' %}" class="back-link">
+            Atgriezties sākumlapā
+        </a>
+
+    </div>
+
+    {{ room.id|json_script:"room-id" }}
+    {{ username|json_script:"username-data" }}
+
+    <script>
+
+        const roomId = JSON.parse(
+            document.getElementById('room-id').textContent
+        );
+
+        const username = JSON.parse(
+            document.getElementById('username-data').textContent
+        );
+
+        const protocol = window.location.protocol === 'https:'
+            ? 'wss://'
+            : 'ws://';
+
+        const socket = new WebSocket(
+            protocol +
+            window.location.host +
+            '/ws/chat/' +
+            roomId +
+            '/'
+        );
+
+        const chatLog = document.getElementById('chat-log');
+        const status = document.getElementById('status');
+        const input = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+
+        chatLog.scrollTop = chatLog.scrollHeight;
+
+        socket.onopen = function() {
+            status.textContent = 'Savienojums aktīvs';
+            status.classList.add('online');
+            sendButton.disabled = false;
+        };
+
+        socket.onclose = function() {
+            status.textContent = 'Savienojums pārtraukts';
+            status.classList.remove('online');
+            sendButton.disabled = true;
+        };
+
+        socket.onerror = function() {
+            status.textContent = 'Savienojuma kļūda';
+        };
+
+        socket.onmessage = function(event) {
+
+            const data = JSON.parse(event.data);
+
+            if (chatLog.querySelector(
+                `[data-id="${data.id}"]`
+            )) {
+                return;
+            }
+
+            const message = document.createElement('div');
+
+            message.classList.add('message');
+            message.classList.add('new-message');
+            message.dataset.id = data.id;
+
+            if (data.username === username) {
+                message.classList.add('own');
+            }
+
+            const author = document.createElement('strong');
+            author.textContent = data.username;
+
+            const time = document.createElement('small');
+            time.textContent = data.timestamp;
+
+            const content = document.createElement('p');
+            content.textContent = data.message;
+
+            message.appendChild(author);
+            message.appendChild(time);
+            message.appendChild(content);
+
+            chatLog.appendChild(message);
+
+            while (chatLog.children.length > 20) {
+                chatLog.removeChild(chatLog.firstElementChild);
+            }
+
+            chatLog.scrollTop = chatLog.scrollHeight;
+        };
+
+        document.getElementById('chat-form')
+            .addEventListener('submit', function(event) {
+
+                event.preventDefault();
+
+                const message = input.value.trim();
+
+                if (message && socket.readyState === WebSocket.OPEN) {
+
+                    socket.send(JSON.stringify({
+                        'message': message
+                    }));
+
+                    input.value = '';
+                    input.focus();
+                }
+            });
+
+    </script>
+
+</body>
+</html>
